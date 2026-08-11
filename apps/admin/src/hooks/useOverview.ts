@@ -1,0 +1,1 @@
+import{useQuery}from'@tanstack/react-query';import{supabase}from'../lib/supabase';export function useOverview(){return useQuery({queryKey:['overview'],queryFn:async()=>{const{data,error}=await supabase.from('admin_overview').select('*').single();if(error)throw error;return data}})}

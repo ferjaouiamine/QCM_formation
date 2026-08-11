@@ -1,0 +1,1 @@
+export default function ProgressBar({value,max}:{value:number;max:number}){return <div className="h-2 overflow-hidden rounded bg-slate-200" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}><div className="h-full bg-accent transition-all" style={{width:`${value/max*100}%`}}/></div>}

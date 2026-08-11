@@ -1,0 +1,15 @@
+alter table public.questions enable row level security;alter table public.candidates enable row level security;alter table public.attempts enable row level security;alter table public.answers enable row level security;alter table public.admin_users enable row level security;
+create or replace function public.is_admin() returns boolean language sql stable security definer set search_path=public as $$select exists(select 1 from public.admin_users where user_id=auth.uid())$$;
+revoke all on public.questions,public.candidates,public.attempts,public.answers,public.admin_users from anon,authenticated;
+grant select(id,section,type,text,options,points) on public.questions to anon,authenticated;
+create policy questions_public_rows on public.questions for select to anon,authenticated using(true);
+grant select,insert on public.candidates to authenticated;grant select,insert on public.attempts to authenticated;grant update(status) on public.attempts to authenticated;grant select,insert on public.answers to authenticated;grant update(selected,answered_at) on public.answers to authenticated;grant select on public.admin_users to authenticated;
+create policy candidates_insert on public.candidates for insert to authenticated with check(true);
+create policy candidates_owner_select on public.candidates for select to authenticated using(public.is_admin() or exists(select 1 from public.attempts a where a.candidate_id=id and a.user_id=auth.uid()));
+create policy attempts_select on public.attempts for select to authenticated using(user_id=auth.uid() or public.is_admin());
+create policy attempts_insert on public.attempts for insert to authenticated with check(user_id=auth.uid());
+create policy attempts_update on public.attempts for update to authenticated using((user_id=auth.uid() and status='in_progress' and now()<expires_at) or public.is_admin()) with check((user_id=auth.uid() and now()<expires_at) or public.is_admin());
+create policy answers_select on public.answers for select to authenticated using(public.is_admin() or exists(select 1 from public.attempts a where a.id=attempt_id and a.user_id=auth.uid() and a.status='in_progress' and now()<a.expires_at));
+create policy answers_insert on public.answers for insert to authenticated with check(exists(select 1 from public.attempts a where a.id=attempt_id and a.user_id=auth.uid() and a.status='in_progress' and now()<a.expires_at));
+create policy answers_update on public.answers for update to authenticated using(exists(select 1 from public.attempts a where a.id=attempt_id and a.user_id=auth.uid() and a.status='in_progress' and now()<a.expires_at)) with check(exists(select 1 from public.attempts a where a.id=attempt_id and a.user_id=auth.uid() and a.status='in_progress' and now()<a.expires_at));
+create policy admin_self on public.admin_users for select to authenticated using(user_id=auth.uid());

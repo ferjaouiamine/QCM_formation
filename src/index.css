@@ -1,0 +1,3 @@
+@tailwind base;@tailwind components;@tailwind utilities;
+@layer base{body{@apply m-0 bg-slate-50 text-slate-800 antialiased}button,input{@apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2}}
+@media print{.no-print{display:none!important}body{background:white}.print-card{box-shadow:none!important;border:1px solid #999;break-inside:avoid}.print-header{display:block!important}}

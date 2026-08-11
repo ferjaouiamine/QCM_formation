@@ -1,0 +1,12 @@
+begin;select plan(4);
+insert into auth.users(id,aud,role,email,encrypted_password) values('10000000-0000-0000-0000-000000000001','authenticated','authenticated','score@test.local','');
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
+insert into candidates(id,full_name,agency) values('20000000-0000-0000-0000-000000000001','Test Score','Test');
+insert into attempts(id,candidate_id,user_id) values('30000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001');
+insert into answers(attempt_id,question_id,selected) values('30000000-0000-0000-0000-000000000001',7,'["a","b","d"]'),('30000000-0000-0000-0000-000000000001',9,'["a"]');
+select lives_ok($$select submit_attempt('30000000-0000-0000-0000-000000000001')$$,'submission succeeds');
+select is((select points from answers where attempt_id='30000000-0000-0000-0000-000000000001' and question_id=7),1.0::numeric,'complete multiple gets 1');
+select is((select points from answers where attempt_id='30000000-0000-0000-0000-000000000001' and question_id=9),0.5::numeric,'partial safe gets .5');
+select is((select score from attempts where id='30000000-0000-0000-0000-000000000001'),1.5::numeric,'total is computed server-side');
+select * from finish();rollback;

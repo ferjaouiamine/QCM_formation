@@ -1,0 +1,2 @@
+import {describe,expect,it} from 'vitest';
+describe('configuration client',()=>{it('ne contient aucune clé service_role dans les sources client',async()=>{const modules=import.meta.glob('../src/**/*.{ts,tsx}',{query:'?raw',import:'default',eager:true}) as Record<string,string>;expect(Object.values(modules).join('\n')).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY/)});it('ne contient pas les réponses correctes dans le dataset public',async()=>{const source=(await import('../src/data/questions?raw')).default;expect(source).not.toMatch(/correct|explanation/)})});

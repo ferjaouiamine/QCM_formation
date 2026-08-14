@@ -7,6 +7,6 @@ export function attemptId(){return localStorage.getItem(ATTEMPT)}
 export async function loadAttempt(id:string){const{data,error}=await supabase.from('attempts').select('id,started_at,expires_at,status').eq('id',id).single();if(error)throw error;return data as AttemptRemote}
 export async function loadAnswers(id:string){const{data,error}=await supabase.from('answers').select('question_id,selected').eq('attempt_id',id);if(error)throw error;return Object.fromEntries(data.map(r=>[r.question_id,r.selected as OptionId[]]))}
 export async function saveAnswer(id:string,questionId:number,selected:OptionId[]){const{error}=await supabase.from('answers').update({selected,answered_at:new Date().toISOString()}).eq('attempt_id',id).eq('question_id',questionId);if(error)throw error}
-export async function submitAttempt(id:string){const{data,error}=await supabase.rpc('submit_attempt',{p_attempt_id:id});if(error)throw error;localStorage.setItem(`${ATTEMPT}.result`,JSON.stringify(data));localStorage.removeItem(ATTEMPT);return data as ResultPayload}
+export async function submitAttempt(id:string){const{data,error}=await supabase.rpc('submit_attempt',{p_attempt_id:id});if(error)throw error;localStorage.removeItem(`${ATTEMPT}.result`);localStorage.removeItem(ATTEMPT);return data as {received:boolean;attempt_id:string}}
 export function cachedResult(){try{return JSON.parse(localStorage.getItem(`${ATTEMPT}.result`)??'null') as ResultPayload|null}catch{return null}}
 export function clearAttempt(){localStorage.removeItem(ATTEMPT);localStorage.removeItem(`${ATTEMPT}.result`)}

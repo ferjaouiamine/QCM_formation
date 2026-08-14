@@ -26,7 +26,7 @@ export default function QuizPage(){
   },[id]);
 
   const finish=useCallback(async()=>{
-    if(id)try{await submitAttempt(id);nav('/results')}
+    if(id)try{await submitAttempt(id);sessionStorage.setItem('bancassurance.submission.received','true');nav('/confirmation')}
     catch(e){setError(e instanceof Error?e.message:'Soumission impossible')}
   },[id,nav]);
 

@@ -1,5 +1,5 @@
-import {useState} from 'react';
-import {Link,useParams} from 'react-router-dom';
+import {useEffect,useRef,useState} from 'react';
+import {Link,useParams,useSearchParams} from 'react-router-dom';
 import {useQuery} from '@tanstack/react-query';
 import {supabase} from '../lib/supabase';
 
@@ -8,14 +8,16 @@ type Answer={question_id:number;section:string;text:string;options:Option[];sele
 type Payload={attempt:{score:number;max_score:number;passed:boolean;level:string;submitted_at:string;duration_sec:number};candidate:{full_name:string;agency:string};answers:Answer[]};
 const fmt=(value:number)=>Number(value).toLocaleString('fr-FR',{maximumFractionDigits:1});
 const levelLabel:Record<string,string>={acquis:'Acquis',acquis_reserves:'Acquis avec réserves',en_cours:'En cours d’acquisition',non_acquis:'Non acquis'};
+const printResult=(name:string)=>{const previous=document.title;document.title=`Resultat-QCM-${name.replaceAll(' ','-')}`;window.print();window.setTimeout(()=>{document.title=previous},800)};
 
 export default function CandidateDetail(){
-  const {id}=useParams(),[errorsOnly,setErrorsOnly]=useState(false);
+  const {id}=useParams(),[searchParams]=useSearchParams(),[errorsOnly,setErrorsOnly]=useState(false),autoPrintDone=useRef(false);
   const {data,isLoading,error}=useQuery({queryKey:['attempt-result',id],enabled:!!id,queryFn:async()=>{const{data,error}=await supabase.rpc('get_attempt_result',{p_attempt_id:id});if(error)throw error;return data as Payload}});
+  useEffect(()=>{if(data&&searchParams.get('export')==='pdf'&&!autoPrintDone.current){autoPrintDone.current=true;window.setTimeout(()=>printResult(data.candidate.full_name),300)}},[data,searchParams]);
   if(isLoading)return <div className="skeleton table-block"/>;
   if(error||!data)return <div className="error-state" role="alert"><h2>Résultat indisponible</h2><p>Cette tentative n’est pas terminée ou vous ne disposez pas des droits nécessaires.</p><Link className="button secondary" to="/candidats">Retour aux candidats</Link></div>;
   const answers=errorsOnly?data.answers.filter(a=>!a.is_correct):data.answers;
   const optionLabel=(answer:Answer,optionId:string)=>answer.options.find(option=>option.id===optionId)?.label??optionId.toUpperCase();
-  const exportPdf=()=>{const previous=document.title;document.title=`Resultat-QCM-${data.candidate.full_name.replaceAll(' ','-')}`;window.print();window.setTimeout(()=>{document.title=previous},500)};
+  const exportPdf=()=>{if(errorsOnly){setErrorsOnly(false);window.setTimeout(()=>printResult(data.candidate.full_name),150)}else printResult(data.candidate.full_name)};
   return <><header className="page-header candidate-header"><div><Link className="back-link" to="/candidats">← Retour aux candidats</Link><p className="eyebrow">Résultat individuel</p><h1>{data.candidate.full_name}</h1><p>{data.candidate.agency} · {new Date(data.attempt.submitted_at).toLocaleDateString('fr-FR')}</p></div><div className="candidate-score"><strong>{fmt(data.attempt.score)} <small>/ {data.attempt.max_score}</small></strong><span className={data.attempt.passed?'passed':'failed'}>{data.attempt.passed?'Réussi':'Non validé'}</span></div></header><section className="detail-summary"><article><small>Niveau atteint</small><strong>{levelLabel[data.attempt.level]??data.attempt.level}</strong></article><article><small>Durée</small><strong>{Math.floor(data.attempt.duration_sec/60)} min {data.attempt.duration_sec%60} s</strong></article><article><small>Réponses correctes</small><strong>{data.answers.filter(a=>a.is_correct).length} / {data.answers.length}</strong></article><article><small>Réponses partielles</small><strong>{data.answers.filter(a=>a.is_partial).length}</strong></article></section><section className="card"><div className="toolbar no-print"><div><h2 className="section-title">Réponses du candidat</h2><p className="muted">Correction détaillée des 20 questions.</p></div><div className="filter-actions"><button className={`button ${!errorsOnly?'primary':'secondary'}`} onClick={()=>setErrorsOnly(false)}>Toutes</button><button className={`button ${errorsOnly?'primary':'secondary'}`} onClick={()=>setErrorsOnly(true)}>Erreurs uniquement</button><button className="button secondary" onClick={exportPdf}>Exporter en PDF</button></div></div><div className="answer-list">{answers.map(answer=>{const status=!answer.selected.length?'Sans réponse':answer.is_correct?'Correct':answer.is_partial?'Partiel':'Faux';return <article className={`answer-card answer-${status.toLowerCase().replace(' ','-')}`} key={answer.question_id}><header><span className="question-number">{answer.question_id}</span><div><small>{answer.section}</small><h3>{answer.text}</h3></div><span className={`answer-status ${status.toLowerCase().replace(' ','-')}`}>{status}</span></header><div className="answer-comparison"><div><small>Réponse du candidat</small><p>{answer.selected.length?answer.selected.map(option=>optionLabel(answer,option)).join(' ; '):'Aucune réponse'}</p></div><div><small>Bonne réponse</small><p>{answer.correct.map(option=>optionLabel(answer,option)).join(' ; ')}</p></div></div><footer><p>{answer.explanation}</p><strong>{fmt(answer.points)} / 1 point</strong></footer></article>})}</div></section></>;
 }
